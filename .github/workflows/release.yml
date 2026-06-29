@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Target architecture to build (leave empty for all)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - darwin-amd64
+          - darwin-arm64
+          - linux-amd64
+          - linux-arm64
+          - linux-armv5
+          - linux-armv6
+          - linux-armv7
+          - linux-loong64
+          - linux-mips-softfloat
+          - linux-mips64-softfloat
+          - linux-mips64le
+          - linux-mipsle-softfloat
+          - linux-mipsle
+          - linux-ppc64le
+          - linux-riscv64
+          - linux-s390x
+          - windows-amd64
+          - windows-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Build
+        # Passing input arch, defaulting to matrix if empty
+        run: chmod +x build.sh && ./build.sh "${{ github.event.inputs.arch || matrix.arch }}"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') && (github.event.inputs.arch == '' || github.event.inputs.arch == matrix.arch)
+        with:
+          files: build/wg-endip_${{ matrix.arch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
